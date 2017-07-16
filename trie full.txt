@@ -1,0 +1,502 @@
+/*
+Trie of strings/chars for demo purposes,
+although can be modified to take strings of general data, thus using generics. 
+*/
+//(!) To debug will have to insert char to every node, so that we can see where the problem is. 
+class Trie
+{
+    public static final int ALPHA_SIZE = 26;  //our alphabet is 26 chars
+    class TrieNode
+    {
+        //ptr to an array of TrieNodes, so an array of ptrs
+        private TrieNode[] children;
+        /**(!) marks the end of a data string sequence, does 
+         *not indicate it is an absolute leaf. This would be
+         *isLast();
+        **/
+        private boolean isLast;
+        private boolean isLeaf;
+        private int childWidth;
+        
+        private char value;
+        
+        
+        
+        //constructor
+        public TrieNode()
+        {
+            this.children = new TrieNode[ALPHA_SIZE];
+            for(int i = 0; i < ALPHA_SIZE; i++)
+            {
+                this.children[i] = null;
+            }
+            this.childWidth = 0;
+            this.value = '\0';
+        }
+        
+        private void setLeaf(boolean b)
+        {
+            this.isLeaf = b;
+        }
+        
+        private boolean isLeaf()
+        {
+            return this.isLeaf;
+        }
+        
+        private void setLast(boolean b)
+        {
+            this.isLast = b;
+        }
+        
+        private boolean isLast()
+        {
+            for(int i = 0; i < ALPHA_SIZE; i++)
+            {
+                if(this.children[i] != null)
+                    return false;           
+            }
+            
+            return true;
+        }
+        
+        private void setValue(int ch)
+        {
+            this.value = (char) (ch +'A');             
+        }
+        
+        private void setValue(char ch)
+        {
+            this.value = ch;
+        }
+        
+        private char getValue()
+        {
+            return this.value;
+        }
+        
+        private int getWidth()
+        {
+            return childWidth;
+        }
+        void childWider()
+        {
+            this.childWidth++;
+        }
+        void childNarrower()
+        {
+            this.childWidth--;
+        }
+    }
+    
+    //root is simply a ptr, so the root itself doesn't represent any key value.
+    TrieNode root;
+    //this is where the public static final int maxWidth goes. And then
+    //we can add where for every new thing we add. 
+    
+    
+    public Trie()
+    {
+        //root can't be null b/c it needs to lead to the first keybit,
+        //_which should be null;
+        root = new TrieNode();      
+        
+    }
+    //factory method for nodes, returns a trieNode w/ null children
+    private TrieNode getNode()
+    {
+        return new TrieNode();
+    }
+    
+    static int keyIndex(Character c)
+    {
+        c = Character.toUpperCase(c);
+        return (int) (c - 'A');
+    }   
+    
+    static char indexToChar(int i)
+    {       
+        return (char) (i +'A');
+    }
+    
+    boolean search(CharSequence str)
+    {
+        TrieNode crawl = root;
+        int index;
+        //i is the level in this case.
+        for(int i = 0; i < str.length(); i++)
+        {
+//             System.out.printf("i: %d, length: %d", i, str.length());
+            index = keyIndex(str.charAt(i));
+//             System.out.println("**Search** found "+str.charAt(i));
+            if(crawl.children[index] == null)
+                return false;
+            
+            crawl = crawl.children[index];
+        }
+        
+//         System.out.printf("Last letter: %c", crawl.getValue());
+//         System.out.println(" isLeaf?"+crawl.isLeaf());
+        //(!) needs 1 more conditional check, && can just return conditional. 
+        return (crawl != null && crawl.isLeaf());   
+    }
+    
+    boolean insert(CharSequence str)
+    {   
+        //basically check if the next child is available, traversing
+        //_finally mark as leaf.
+        
+        TrieNode crawl = root;
+        int index;
+        for(int i = 0; i < str.length(); i++)
+        {
+            index = keyIndex(str.charAt(i));
+            //check if the next child is NOT available
+            if(crawl.children[index] == null)
+            {
+                crawl.children[index] = getNode();
+                crawl.children[index].setValue(index);
+                crawl.childWider();
+            }
+            crawl = crawl.children[index];          
+        }
+        crawl.setLast(crawl.isLast());
+        crawl.setLeaf(true);
+        return true;
+    }
+    
+    //recursive delete. 
+    int delete(CharSequence str)
+    {
+        //don't need to make a copy to pass root. 
+        //if it's not an empty strings
+        if(str.length() > 0)
+            return deleteHelper(this.root, str, 0);
+        
+        return 0;
+    }
+    
+    //0 indicates word not found. 1 indicates key must be deleted. 2 indicates a prefix, so don't delete
+    private static int deleteHelper(TrieNode crawl, CharSequence str, int level)
+    {
+        //doesn't need to check if the root is going to be null, b/c it
+        //_won't ever be null
+        
+        if(level == str.length())
+        {
+            /*reached the end of the string in terms of length,  
+             *so needs to check if it's leaf node:TRUE->
+             *checks if it's a prefix:{TRUE->just unmarks leaf node;
+             *FALSE->unmarks leaf node, and deletes node}FALSE->
+             *word not found return false.
+             */
+//         System.out.printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$Last letter: %c", crawl.getValue());
+//         System.out.println(" isLeaf?"+crawl.isLeaf());
+            if(crawl.isLeaf())
+            {
+                //unmark
+                crawl.setLeaf(false);
+//                 System.out.println(" isLeafNow?"+crawl.isLeaf());
+                //check if prefix, by checking if any of children continue.
+                if(crawl.isLast()) //not a prefix, delete
+                {
+//                     System.out.println("$$$$$$$$$is "+crawl.getValue()+"last?"+crawl.isLast());
+                    return 1;
+                }
+                return 2;
+            }
+            return 0; //word not found.
+        }
+        else //(!)<-- prob not necessary.
+        {
+            int index = keyIndex(str.charAt(level));
+            
+            int result = deleteHelper(crawl.children[index], str, level+1);
+//             System.out.println("curr: "+crawl.getValue()+"; child: "+indexToChar(index)+", must be deleted?: "+result);
+            if(result == 1) //if the word found && can be deleted (not a prefix)
+            {                
+                crawl.children[index] = null;
+                crawl.childNarrower();
+                //(!)vv leaf can return false, if there's
+                //_a prefix inside a prefix.                
+                if(!crawl.isLeaf() && crawl.isLast()) //is not a prefix and is last->delete
+                    result = 1;
+                else
+                    result = 2;
+            }
+            return result;
+        }
+    }
+        
+    //sum way. 
+    private static int maxWidth(TrieNode n)
+    {
+        int sum = 0;
+        
+        if(n.isLast())      
+        {
+//          System.out.println("[Found a last one]");
+            return 1;
+        }
+        else //not last, sum the widths of all its children
+        {
+//          System.out.println("[maxWidth. isLast()?:"+n.isLast()+" , getWidth:"+n.getWidth()+"]");
+            for(int i = 0, j = 0; j < n.getWidth(); i++)
+            {
+//              System.out.println("Looking for children");
+                if(n.children[i] != null)//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                {
+                    ++j;
+//                  System.out.println("Going into: "+indexToChar(i));
+                    sum += maxWidth(n.children[i]);     
+                }
+            }
+//          System.out.println("Sum:"+sum);
+            return sum;
+        }
+    }
+
+    private static void printPadding(TrieNode t, char ch, int flag)
+    {
+        int mw = maxWidth(t);
+        
+//      System.out.printf("mw%d%n", mw);
+        int stop = (flag == 0)?((2*mw)-1):(2*mw);
+        
+        for(int i = 1; i <= stop; i++)
+            System.out.printf("%c", ch);
+                    
+    }
+     
+    /*printing children's currLevel*/
+    private static boolean aLoop(TrieNode t, int currLevel, int endLevel, boolean done)
+    {
+        //checks if trie is empty.  
+// //         if(currLevel > 1) System.out.println(">>> Inside a loop!!!! currParent: "+t.getValue()+"; currLevel: "+currLevel+";endLevel: "+endLevel);
+        if(currLevel == 1 && t.isLast())        
+        {
+            System.out.println("Empty Trie");
+            return false;       
+        }
+        //checks if can't travel further & already printed.
+        if((currLevel < endLevel) && t.isLast()) //can't travel further & already printed. 
+        {
+            printPadding(t, ' ', 1);            
+            return (done || false); //(!) can just return false;. 
+        }
+        //checks if needs to traverse further.
+        if(currLevel < endLevel)
+        {   
+// //             System.out.printf("11>>> currLevel: %d, endLevel:%d", currLevel, endLevel);
+            for(int i = 0, j = 0; j < t.getWidth(); i++)
+            {
+                if(t.children[i] != null)
+                {
+// //                     System.out.println("Found child "+indexToChar(i)+"; endLevel: "+endLevel);
+                    ++j;
+// //                     System.out.printf("%n11>>>parent: %c; i: %d; #childrenOfParent: %d; j: %d%n", t.getValue(), i, t.getWidth(), j);
+//                     if(indexToChar(i) == 'B')
+//                     System.out.println("Going into b");
+                    boolean temp = aLoop(t.children[i], currLevel+1, endLevel, done); //(!) when this took the place of temp, it would'nt execute but the first time. Why??
+                    done = (done || temp);
+                }
+            }
+            return done;
+            //every child of this node will traverse.
+        }
+        //vv If we reach a printing level, we print, return true. 
+        if(currLevel == endLevel)
+        {   
+// //             System.out.printf("22>>> currLevel: %d, endLevel:%d", currLevel, endLevel);
+            if(!(t.isLast()))
+            {
+// //                 System.out.printf("%n1.Parent: %c , is NOT last, will print out its child(ren)%n", t.getValue());
+                //we print out the childsdren
+                for(int i = 0, j = 0; j < t.getWidth(); i++)       
+                {
+// //                     System.out.printf("%n22>>>parent: %c; i: %d; #childrenOfParent: %d; j: %d%n", t.getValue(), i, t.getWidth(), j);
+                    if(t.children[i] != null)
+                    {
+// //                         System.out.printf("%nChild Found %c<<<<<<<<<<%n", t.children[i].getValue());
+                        ++j;
+// //                         System.out.printf("%n33>>>parent: %c; i: %d; #childrenOfParent: %d; j: %d%n", t.getValue(), i, t.getWidth(), j);
+//                      System.out.printf("index:"+i+", tochar->"+indexToChar(i));
+                        System.out.printf("%c", t.children[i].getValue());
+                        //check if this child has siblings
+                        char padding = (t.getWidth() == 1)? ' ': '-';
+                        if(j >= t.getWidth())
+                             padding = ' ';
+//                      System.out.printf("Maxwidth = ");
+                        printPadding(t.children[i], padding, 0);
+                        done = (done || (!(t.children[i].isLast())));
+                    }   
+                }
+            }
+            else                
+            {   
+// //                 System.out.printf("%n2.Parent: %c , IS last, will print out its child(ren)%n", t.getValue());
+                printPadding(t, ' ', 1);
+                done = false;
+            }
+            return done;
+        }
+        //won't reach here, b/c all bases covered, so the last if conditional doesn't need to be there. 
+        System.out.println("Somehow got here!!!!!");
+        return false;
+    }
+    /*
+     * @param flag: 0 for less spaces (more children)
+     *             >=1for more spaces (less/no children)
+     */
+    private static void printSpaces(TrieNode t, int flag)
+    {
+        int mw = maxWidth(t);
+        int stop = (flag == 0)?((2*mw)-1):(2*mw);
+        
+        for(int i = 1; i <= stop; i++)
+            System.out.printf(" ");
+        
+    }
+    
+    private static void inBetweenLoop(TrieNode t, int currLevel, int endLevel)
+    {
+        //checks if trie is empty.  
+        if(currLevel == 1 && t.isLast())            
+            return; //empty trie        
+        //checks if can't travel further & already printed.
+        if((currLevel < endLevel) && t.isLast()) //can't travel further & already printed. 
+        {
+            printSpaces(t, 1);
+            return;
+        }
+        //checks if needs to traverse further.
+        if(currLevel < endLevel)
+        {
+            for(int i = 0, j = 0; j < t.getWidth()/*#fChildren*/; i++)         
+                if(t.children[i] != null)
+                {
+                    ++j;
+                    inBetweenLoop(t.children[i], currLevel+1, endLevel);
+                }
+            return;
+            //every child of this node will traverse.
+        }
+        //vv If we reach out level, we append this to the string and return it. 
+        if(currLevel == endLevel)
+        {
+            if(t.isLast())//no children         
+                printSpaces(t, 1);
+            else              
+                //we print out the childsdren
+                for(int i = 0, j = 0; j < t.getWidth(); i++)   
+                    if(t.children[i] != null)
+                    {
+                        ++j;
+                        if(t.children[i].isLast())
+                        System.out.printf(" ");
+                        else
+                        System.out.printf("|");
+                        printSpaces(t.children[i], 0);
+                    }
+            return;
+        }
+        //won't reach here, b/c all bases covered, so the last if conditional doesn't need to be there. 
+        System.out.println("Somehow got here2!!!!!");
+        return;
+    }
+    void lookForB()
+    {
+        for(int i = 0, j = 0; j < root.children[keyIndex('B')].getWidth(); i++)
+        {
+            if(root.children[keyIndex('B')].children[i] != null)
+            {
+                ++j;
+                System.out.println();
+               System.out.println(indexToChar(i)+" Found!");
+               System.out.println("Is Last?:"+root.children[keyIndex('B')].children[i].isLast());
+               System.out.println("width?: "+root.children[keyIndex('B')].children[i].getWidth());
+           }
+        }
+
+//          if(root.children[keyIndex('B')] != null)
+//          {              
+//              System.out.println();
+//             System.out.println("Is Last?:"+root.children[keyIndex('B')].isLast());
+//             System.out.println("width?: "+root.children[keyIndex('B')].getWidth());
+//         }
+        
+    }
+    //go to a different level
+    void printTrie()
+    {
+        int end = 1;
+
+        System.out.printf("%nROOT%n|%n");
+        //while there are nodes to print in a level. 
+        while(aLoop(this.root, 1, end, false))
+        {
+            System.out.printf("%n"); //print a \n b/c level printed.
+            inBetweenLoop(this.root, 1, end);
+            System.out.printf("%n");
+            ++end;
+        }
+    }
+    
+    
+    //driver method.
+    public static void main(String[] args)
+    {
+        Trie myTrie = new Trie();
+        String[] words = {"BAT", "BAnd", "ant", "Banco", "CAT"};
+        //1st print the empty tree. 
+        System.out.println("Empty Tree:");
+// //         myTrie.printTrie();
+        
+       System.out.println("\nInsert \"Bat\"");
+        myTrie.insert(words[0]);
+//         System.out.println("Contains"+words[0]+"? "+myTrie.search(words[0]));
+        myTrie.printTrie();
+       
+        System.out.println("\n\nInsert \"Band\"");
+        myTrie.insert("BAnd");
+//         System.out.println("Contains"+words[1]+"? "+myTrie.search(words[1]));
+        myTrie.printTrie();
+        
+        System.out.println("\n\nInsert \"ant\"");
+        myTrie.insert("ant");
+//         System.out.println("Contains"+words[2]+"? "+myTrie.search(words[2]));
+        myTrie.printTrie();
+        
+        myTrie.insert("BanCo");
+        myTrie.insert("CAT");
+//         System.out.println("Contains"+words[words.length-1]+"? "+myTrie.search(words[words.length-1]));
+// //         myTrie.printTrie();
+        
+        myTrie.delete("BAND");
+//         System.out.println("After Deleting: \"Band\"");        
+//         System.out.println("Contains"+words[1]+"? "+myTrie.search(words[1]));
+//         System.out.println("Contains"+words[3]+"? "+myTrie.search(words[3]));
+
+		
+		myTrie.insert("Bandit");
+        myTrie.printTrie();       
+	
+		System.out.println("Contains Band? "+myTrie.search("BAND"));
+
+		System.out.println("Insert Band");
+
+		myTrie.insert("BaNd");
+
+		System.out.println("Contains Band? "+myTrie.search("BAND"));
+		
+        
+//      myTrie.lookForB();
+        
+        
+        
+        
+                            
+        
+    }
+    
+}
